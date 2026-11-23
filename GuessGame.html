@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Guess Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&display=swap" rel="stylesheet" />
+    <!-- You may change the CSS location based on your file structure-->
+    <link rel="stylesheet" href="public/css/guesss-game.css" />
+  </head>
+  <body>
+    <div class="main-container">
+      <h2>Guess Game</h2>
+      <div class="rules">
+        Guess a number between 1 - 20, you have 5 chances.
+      </div>
+
+      <div class="input">
+        <input type="text" id="guess-value" name="guess-value" inputmode="numeric" autocomplete="off" aria-label="Your guess" />
+        <button id="guess-btn">Guess!</button>
+        <button id="restart-btn">Restart</button>
+      </div>
+
+      <div class="ruler" id="ruler" aria-hidden="true"></div>
+
+      <hr />
+
+      <div id="attempt-text">
+        Attempt <span id="attempt"></span>/5
+      </div>
+      <div id="result" role="status" aria-live="polite"></div>
+    </div>
+
+    <script>
+      const MAX_ATTEMPTS = 5;
+      const MIN = 1;
+      const MAX = 20;
+
+      const guessInput = document.getElementById("guess-value");
+      const guessBtn = document.getElementById("guess-btn");
+      const restartBtn = document.getElementById("restart-btn");
+      const attemptEl = document.getElementById("attempt");
+      const resultEl = document.getElementById("result");
+      const rulerEl = document.getElementById("ruler");
+
+      let target = 0;
+      let attempts = 0;
+      let active = false;
+      let low = MIN;   // lowest value still possible
+      let high = MAX;  // highest value still possible
+      let guessed = [];
+
+      function isNumeric(value) {
+        return value.trim() !== "" && !isNaN(value) && isFinite(value);
+      }
+
+      // Number line: one cell per possible value. Cells ruled out by
+      // earlier guesses fade, guessed cells are marked.
+      function buildRuler() {
+        rulerEl.innerHTML = "";
+        for (let n = MIN; n <= MAX; n++) {
+          const cell = document.createElement("span");
+          cell.className = "cell";
+          cell.id = "cell-" + n;
+          cell.textContent = n;
+          rulerEl.appendChild(cell);
+        }
+      }
+
+      function paintRuler(revealTarget) {
+        for (let n = MIN; n <= MAX; n++) {
+          const cell = document.getElementById("cell-" + n);
+          cell.classList.toggle("out", n < low || n > high);
+          cell.classList.toggle("tried", guessed.includes(n));
+          cell.classList.toggle("target", !!revealTarget && n === target);
+        }
+      }
+
+      function showAttempts() {
+        attemptEl.textContent = attempts;
+      }
+
+      function setResult(text, kind) {
+        resultEl.textContent = text;
+        resultEl.className = kind || "";
+      }
+
+      function showGuessButton() {
+        restartBtn.style.display = "none";
+        guessBtn.style.display = "inline-block";
+      }
+
+      function showRestartButton() {
+        guessBtn.style.display = "none";
+        restartBtn.style.display = "inline-block";
+      }
+
+      function resetField() {
+        guessInput.value = "0";
+        guessInput.focus();
+        guessInput.select(); // typing replaces the 0 straight away
+      }
+
+      function init() {
+        active = false;
+        attempts = 0;
+        guessed = [];
+        low = MIN;
+        high = MAX;
+        guessInput.value = "";
+        showAttempts();
+        setResult("", "");
+        buildRuler();
+        paintRuler(false);
+        showRestartButton();
+      }
+
+      function restart() {
+        target = Math.floor(Math.random() * MAX) + MIN; // 1 - 20
+        attempts = 0;
+        guessed = [];
+        low = MIN;
+        high = MAX;
+        active = true;
+        showGuessButton();
+        showAttempts();
+        setResult("", "");
+        paintRuler(false);
+        guessInput.value = "";
+        guessInput.focus();
+      }
+
+      function endGame(won) {
+        active = false;
+        setResult(won ? "You WIN" : "You LOSE", won ? "win" : "lose");
+        showRestartButton();
+        paintRuler(true);
+      }
+
+      function guess() {
+        if (!active) return;
+
+        const raw = guessInput.value;
+        if (!isNumeric(raw)) return; // empty or not a number: do nothing
+
+        const value = Number(raw);
+        attempts++;
+        guessed.push(value);
+        showAttempts();
+
+        if (value === target) {
+          endGame(true);
+          return;
+        }
+
+        if (value > target) {
+          setResult(value + " is too high", "hint");
+          high = Math.min(high, value - 1);
+        } else {
+          setResult(value + " is too low", "hint");
+          low = Math.max(low, value + 1);
+        }
+
+        if (attempts >= MAX_ATTEMPTS) {
+          endGame(false);
+          return;
+        }
+
+        paintRuler(false);
+        resetField();
+      }
+
+      guessBtn.addEventListener("click", guess);
+      restartBtn.addEventListener("click", restart);
+      guessInput.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") guess();
+      });
+
+      init();
+    </script>
+  </body>
+</html>
